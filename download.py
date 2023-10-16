@@ -1,13 +1,12 @@
 import os
 import requests
+import shutil
 
 from zipfile import ZipFile
 from tqdm import tqdm
 
-DIV2K_URL = "http://data.vision.ee.ethz.ch/cvl/DIV2K"
-DATA_DIR = 'DIV2K'
-TRAIN = "DIV2K_train_HR.zip"
-VAL = "DIV2K_valid_HR.zip"
+DIV2K_URL = 'http://data.vision.ee.ethz.ch/cvl/DIV2K'
+DATA, TRAIN, VALID = 'DIV2K', 'DIV2K_train_HR', 'DIV2K_valid_HR'
 
 class Downloader:
     """ Downloader class used for downloading data from given url """
@@ -39,21 +38,26 @@ class Downloader:
 if __name__ == '__main__':
 
     # exit if images already downloaded
-    if os.path.exists(DATA_DIR) and len(os.listdir(DATA_DIR)) != 0:
+    if os.path.exists(DATA) and len(os.listdir(DATA)) != 0:
         exit(0)
 
     down = Downloader(unit='MB')
-    
-    print(f'Downloading: {TRAIN}')
-    down(f'{DIV2K_URL}/{TRAIN}', TRAIN)
+    os.mkdir(DATA)
 
-    print(F'Dowloading: {VAL}')
-    down(f'{DIV2K_URL}/{VAL}', VAL)
+    for dir in [TRAIN, VALID]:
+        
+        print(f'[{dir}]: downloading')
+        down(f'{DIV2K_URL}/{dir}.zip', f'{dir}.zip')
+        
+        print(f'[{dir}]: unzipping')
+        with ZipFile(f'{dir}.zip', 'r') as zip:
+            zip.extractall()
 
-    print('Unzipping')
-    for type in [TRAIN, VAL]:
-        with ZipFile(type, 'r') as zip:
-            zip.extractall(DATA_DIR)
+        print(f'[{dir}]: removing zip file')
+        for f in os.listdir(dir):
+            shutil.move(f'{dir}/{f}', f'{DATA}/{f}')
 
+        os.rmdir(dir)
+        os.remove(f'{dir}.zip')
 
-
+    print(f'total img count: {len(os.listdir(DATA))}')
