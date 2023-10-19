@@ -39,6 +39,7 @@ if __name__ == '__main__':
 
     # exit if images already downloaded
     if os.path.exists(DATA) and len(os.listdir(DATA)) != 0:
+        print(f'{DATA} folder already exists and it is not empty')
         exit(0)
 
     down = Downloader(unit='MB')
