@@ -1,70 +1,78 @@
-from torch import nn
+""" NN modules file with model components """
+
 from math import log2
+from torch import nn
+
 
 class SubPixelBlock(nn.Module):
-    """ Subpixel conv block used for img upscaling using combined channels """
+    """Subpixel conv block used for img upscaling using combined channels"""
+
     def __init__(self, n_channels, k, scale=4):
-        super(SubPixelBlock, self).__init__()
+        super().__init__()
 
         self.layers = nn.Sequential(
-            nn.Conv2d(n_channels, n_channels * (scale ** 2), k, padding=k // 2),
+            nn.Conv2d(n_channels, n_channels * (scale**2), k, padding=k // 2),
             nn.PixelShuffle(scale),
-            nn.PReLU()
-        )    
-    
+            nn.PReLU(),
+        )
+
     def forward(self, x):
         return self.layers(x)
-    
+
 
 class ConvBlock(nn.Module):
-    """ Constant dimension conv block with optional normalization and activation function """
+    """Constant dimension conv block with optional normalization and activation function"""
 
     ACTIVATIONS = {
-        None : None,
-        'prelu' : nn.PReLU(),
-        'sigmoid' : nn.Sigmoid(),
-        'tanh' : nn.Tanh()
+        None: None,
+        "prelu": nn.PReLU(),
+        "sigmoid": nn.Sigmoid(),
+        "tanh": nn.Tanh(),
     }
 
     def __init__(self, in_channels, out_channels, k, norm=False, activation=None):
-        super(ConvBlock, self).__init__()
+        super().__init__()
 
-        assert activation in self.ACTIVATIONS.keys()
+        assert activation in self.ACTIVATIONS
 
         # main conv block
-        self.layers = [nn.Conv2d(in_channels, out_channels, k, padding=k // 2)]
+        layers = [nn.Conv2d(in_channels, out_channels, k, padding=k // 2)]
 
         # optional conv layers
-        if norm: self.layers.append(nn.BatchNorm2d())
-        if activation is not None: self.layers.append(self.ACTIVATIONS[activation.lower()])
-        
-        self.conv = nn.Sequential(*self.layers)
+        if norm:
+            layers.append(nn.BatchNorm2d(out_channels))
+        if activation is not None:
+            layers.append(self.ACTIVATIONS[activation.lower()])
+
+        self.conv = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.conv(x)
-        
+
 
 class ResidualConvBlock(nn.Module):
-    """ Residual conv block with 2 conv layers and residual connection """
+    """Residual conv block with 2 conv layers and residual connection"""
+
     def __init__(self, n_channels, k, norm=False):
-        super(ResidualConvBlock, self).__init__()
+        super().__init__()
 
         self.conv_blocks = nn.Sequential(
-            ConvBlock(n_channels, n_channels, k, norm, 'prelu'),
-            ConvBlock(n_channels, n_channels, k, norm, None)
+            ConvBlock(n_channels, n_channels, k, norm, "prelu"),
+            ConvBlock(n_channels, n_channels, k, norm, None),
         )
-        
+
     def forward(self, x):
         skip, x = x, self.conv_blocks(x)
         return x + skip
 
+
 class SResNet(nn.Module):
-    """ Super resolution upscaling model """
+    """Super resolution upscaling model"""
 
     def __init__(self, in_channels, out_channels, res_block_cnt=4, scale=4, norm=False):
-        super(SResNet, self).__init__()
+        super().__init__()
 
-        self.conv1 = ConvBlock(in_channels, 64, 9, norm, 'prelu')
+        self.conv1 = ConvBlock(in_channels, 64, 9, norm, "prelu")
 
         self.res_blocks = nn.Sequential(
             *[ResidualConvBlock(64, 3, norm) for _ in range(res_block_cnt)]
@@ -74,12 +82,11 @@ class SResNet(nn.Module):
 
         self.subpix_blocks = nn.Sequential(
             *[SubPixelBlock(64, 3, scale=2) for _ in range(int(log2(scale)))]
-            )
+        )
 
-        self.conv3 = ConvBlock(64, out_channels, 9, norm, 'sigmoid')
+        self.conv3 = ConvBlock(64, out_channels, 9, norm, "sigmoid")
 
     def forward(self, x):
-        
         # conv1
         x = self.conv1(x)
 
@@ -90,7 +97,7 @@ class SResNet(nn.Module):
 
         # subpix blocks
         x = self.subpix_blocks(x)
-        
+
         # conv3 with sigmoid activation
         x = self.conv3(x)
 
