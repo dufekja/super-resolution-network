@@ -1,44 +1,42 @@
 from torch import nn
+from math import log2
 
 class SubPixelBlock(nn.Module):
-    def __init__(self, scale=4, k=3, n_channels=64):
-        super().__init__()
-        self.scale = scale
-        self.k = k
-        self.n_channels = n_channels
+    """ Subpixel conv block used for img upscaling using combined channels """
+    def __init__(self, n_channels, k, scale=4):
+        super(SubPixelBlock, self).__init__()
 
         self.layers = nn.Sequential(
-            nn.Conv2d(self.n_channels, self.n_channels * (self.scale ** 2), self.k, padding=self.k // 2),
-            nn.PixelShuffle(self.scale),
+            nn.Conv2d(n_channels, n_channels * (scale ** 2), k, padding=k // 2),
+            nn.PixelShuffle(scale),
             nn.PReLU()
         )    
     
     def forward(self, x):
         return self.layers(x)
+    
 
-class ConvBlock(nn.Module):    
-    def __init__(self, in_channels, out_channels, k=3, norm=False, activation=None):
-        super().__init__()
+class ConvBlock(nn.Module):
+    """ Constant dimension conv block with optional normalization and activation function """
 
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.k = k
-        self.norm = norm
+    ACTIVATIONS = {
+        None : None,
+        'prelu' : nn.PReLU(),
+        'sigmoid' : nn.Sigmoid(),
+        'tanh' : nn.Tanh()
+    }
 
-        # insert conv layer
-        self.layers = [nn.Conv2d(self.in_channels, self.out_channels, self.k, padding=self.k // 2)]
+    def __init__(self, in_channels, out_channels, k, norm=False, activation=None):
+        super(ConvBlock, self).__init__()
 
-        # insert batch norm layer
+        assert activation in self.ACTIVATIONS.keys()
+
+        # main conv block
+        self.layers = [nn.Conv2d(in_channels, out_channels, k, padding=k // 2)]
+
+        # optional conv layers
         if norm: self.layers.append(nn.BatchNorm2d())
-
-        # insert activation func
-        if activation is not None:
-            self.layers.append(
-                {
-                    'prelu' : nn.PReLU(),
-                    'tanh' : nn.Tanh()
-                }[activation.lower()]
-            )
+        if activation is not None: self.layers.append(self.ACTIVATIONS[activation.lower()])
         
         self.conv = nn.Sequential(*self.layers)
 
@@ -47,61 +45,53 @@ class ConvBlock(nn.Module):
         
 
 class ResidualConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, k=3, norm=False, activation=None):
-        super().__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.k = k
-        self.norm = norm
-        self.activation = activation
+    """ Residual conv block with 2 conv layers and residual connection """
+    def __init__(self, n_channels, k, norm=False):
+        super(ResidualConvBlock, self).__init__()
 
         self.conv_blocks = nn.Sequential(
-            ConvBlock(self.in_channels, self.out_channels, self.k, self.norm, self.activation),
-            ConvBlock(self.in_channels, self.out_channels, self.k, self.norm)
+            ConvBlock(n_channels, n_channels, k, norm, 'prelu'),
+            ConvBlock(n_channels, n_channels, k, norm, None)
         )
         
     def forward(self, x):
-        residual, x = x, self.conv_blocks(x)
-        return x + residual
+        skip, x = x, self.conv_blocks(x)
+        return x + skip
 
 class SResNet(nn.Module):
-    def __init__(self, in_channels=3, out_channels=3, scale=4, residual_cnt=1, sub_pix_cnt=1, norm=False):
-        super().__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.scale = scale
-        self.residual_cnt = residual_cnt
-        self.sub_pix_cnt = sub_pix_cnt
-        self.norm = norm
+    """ Super resolution upscaling model """
 
-        self.conv1 = ConvBlock(self.in_channels, 64, 9, activation='prelu')
+    def __init__(self, in_channels, out_channels, res_block_cnt=4, scale=4, norm=False):
+        super(SResNet, self).__init__()
 
-        self.residual_blocks = nn.Sequential(
-            *[ResidualConvBlock(64, 64, 3, activation='prelu') for _ in range(self.residual_cnt)]
+        self.conv1 = ConvBlock(in_channels, 64, 9, norm, 'prelu')
+
+        self.res_blocks = nn.Sequential(
+            *[ResidualConvBlock(64, 3, norm) for _ in range(res_block_cnt)]
         )
 
-        self.conv2 = ConvBlock(64, 64, 9)
+        self.conv2 = ConvBlock(64, 64, 9, norm)
 
-        self.sub_pixel_blocks = nn.Sequential(
-            *[SubPixelBlock(self.scale) for _ in range(self.sub_pix_cnt)]
-        )
+        self.subpix_blocks = nn.Sequential(
+            *[SubPixelBlock(64, 3, scale=2) for _ in range(int(log2(scale)))]
+            )
 
-        self.conv3 = ConvBlock(64, self.out_channels, 9, activation='tanh')
+        self.conv3 = ConvBlock(64, out_channels, 9, norm, 'sigmoid')
 
     def forward(self, x):
-
-        # first conv with prelu
+        
+        # conv1
         x = self.conv1(x)
 
-        # residual blocks with skipped conn
-        skip, x = x, self.residual_blocks(x)
+        # res blocks with conv2
+        skip, x = x, self.res_blocks(x)
         x = self.conv2(x)
         x += skip
 
         # subpix blocks
-        x = self.sub_pixel_blocks(x)
+        x = self.subpix_blocks(x)
         
-        # tanh conv block
+        # conv3 with sigmoid activation
         x = self.conv3(x)
 
         return x
