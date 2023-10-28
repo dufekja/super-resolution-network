@@ -69,22 +69,38 @@ class ResidualConvBlock(nn.Module):
 class SResNet(nn.Module):
     """Super resolution upscaling model"""
 
-    def __init__(self, in_channels, out_channels, res_block_cnt=4, scale=4, norm=False):
+    def __init__(
+        self,
+        in_channels=3,
+        out_channels=3,
+        n_channels=64,
+        small_kernel=3,
+        large_kernel=9,
+        res_block_cnt=10,
+        scale=2,
+        norm=False,
+    ):
         super().__init__()
 
-        self.conv1 = ConvBlock(in_channels, 64, 9, norm, "prelu")
+        self.conv1 = ConvBlock(in_channels, n_channels, large_kernel, norm, "prelu")
 
         self.res_blocks = nn.Sequential(
-            *[ResidualConvBlock(64, 3, norm) for _ in range(res_block_cnt)]
+            *[
+                ResidualConvBlock(n_channels, small_kernel, norm)
+                for _ in range(res_block_cnt)
+            ]
         )
 
-        self.conv2 = ConvBlock(64, 64, 9, norm)
+        self.conv2 = ConvBlock(n_channels, n_channels, large_kernel, norm)
 
         self.subpix_blocks = nn.Sequential(
-            *[SubPixelBlock(64, 3, scale=2) for _ in range(int(log2(scale)))]
+            *[
+                SubPixelBlock(n_channels, small_kernel, scale=2)
+                for _ in range(int(log2(scale)))
+            ]
         )
 
-        self.conv3 = ConvBlock(64, out_channels, 9, norm, "sigmoid")
+        self.conv3 = ConvBlock(n_channels, out_channels, large_kernel, norm, "tanh")
 
     def forward(self, x):
         # conv1
@@ -98,7 +114,7 @@ class SResNet(nn.Module):
         # subpix blocks
         x = self.subpix_blocks(x)
 
-        # conv3 with sigmoid activation
+        # conv3 with tanh activation
         x = self.conv3(x)
 
         return x
