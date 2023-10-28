@@ -1,28 +1,25 @@
 """ Superres model related utilities """
 
 import random
-import torch
-import numpy as np
 
 import torchvision.transforms.functional as FT
 from PIL import Image
 
 INPUT_CONVERSIONS = {
-    'pil' : lambda img: FT.to_tensor(img).type(torch.float),
+    'pil' : FT.to_tensor,
     '[0, 255]': lambda img: img / 255,
     '[0, 1]' : lambda img: img,
     '[-1, 1]': lambda img: (img + 1) / 2
 }
 
 OUTPUT_CONVERSIONS = {
-    'pil' : lambda img: FT.to_pil_image(img),
+    'pil' : FT.to_pil_image,
     '[0, 255]': lambda img: img * 255,
     '[0, 1]': lambda img: img,
     '[-1, 1]': lambda img: img * 2 - 1
 }
 
 def convert_img(img, input_format, output_format):
-    
     assert input_format in INPUT_CONVERSIONS
     assert output_format in OUTPUT_CONVERSIONS
 
