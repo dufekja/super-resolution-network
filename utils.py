@@ -8,7 +8,7 @@ import torchvision.transforms.functional as FT
 from PIL import Image
 
 INPUT_CONVERSIONS = {
-    'pil' : lambda img: FT.pil_to_tensor(img).type(torch.float),
+    'pil' : lambda img: FT.to_tensor(img).type(torch.float),
     '[0, 255]': lambda img: img / 255,
     '[0, 1]' : lambda img: img,
     '[-1, 1]': lambda img: (img + 1) / 2
