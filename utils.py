@@ -4,21 +4,42 @@ import random
 import torch
 import numpy as np
 
+import torchvision.transforms.functional as FT
 from PIL import Image
-from torchvision.transforms.functional import pil_to_tensor
+
+INPUT_CONVERSIONS = {
+    'pil' : lambda img: FT.pil_to_tensor(img).type(torch.float),
+    '[0, 255]': lambda img: img / 255,
+    '[0, 1]' : lambda img: img,
+    '[-1, 1]': lambda img: (img + 1) / 2
+}
+
+OUTPUT_CONVERSIONS = {
+    'pil' : lambda img: FT.to_pil_image(img),
+    '[0, 255]': lambda img: img * 255,
+    '[0, 1]': lambda img: img,
+    '[-1, 1]': lambda img: img * 2 - 1
+}
+
+def convert_img(img, input_format, output_format):
+    
+    assert input_format in INPUT_CONVERSIONS
+    assert output_format in OUTPUT_CONVERSIONS
+
+    return OUTPUT_CONVERSIONS[output_format](INPUT_CONVERSIONS[input_format](img))
 
 
-class ImgTransform:
+class ImgTransformer:
     """Img transformer utility class for cropping and scaling images"""
 
-    def __init__(self, crop=128, scale=4, is_train=True, output="Tensor"):
+    def __init__(self, lr_output, hr_output, crop=64, scale=2, is_train=True):
         self.crop = crop
         self.scale = scale
         self.is_train = is_train
-        self.output = output
+        self.lr_output = lr_output
+        self.hr_output = hr_output
 
         assert crop % scale == 0
-        assert output in ["Tensor", "Numpy", "PIL"]
 
     def __call__(self, img):
         if self.is_train:
@@ -26,35 +47,21 @@ class ImgTransform:
             assert self.crop <= min(img.size)
 
             # crop HR image
-            left, top = random.randint(0, img.width - self.crop), random.randint(
-                0, img.height - self.crop
-            )
+            left, top = random.randint(0, img.width - self.crop), random.randint(0, img.height - self.crop)
             right, bottom = left + self.crop, top + self.crop
 
             hr_img = img.crop((left, top, right, bottom))
         else:
             # crop biggest possible image part divisible by scale
-            right, bottom = (img.width // self.scale) * self.scale, (
-                img.height // self.scale
-            ) * self.scale
+            right, bottom = (img.width // self.scale) * self.scale, (img.height // self.scale) * self.scale
             hr_img = img.crop((0, 0, right, bottom))
 
         # downscale hr image
-        lr_img = hr_img.resize(
-            (hr_img.width // self.scale, hr_img.height // self.scale), Image.BICUBIC
-        )
+        lr_img = hr_img.resize((hr_img.width // self.scale, hr_img.height // self.scale), Image.BICUBIC)
 
         assert lr_img.width * self.scale == hr_img.width
         assert lr_img.height * self.scale == hr_img.height
         assert (hr_img.width % self.scale, hr_img.height % self.scale) == (0, 0)
 
         # return lres and hres images in specified output type
-        if self.output == "Tensor":
-            return pil_to_tensor(lr_img).type(torch.float), pil_to_tensor(hr_img).type(
-                torch.float
-            )
-
-        if self.output == "Numpy":
-            return np.array(lr_img), np.array(hr_img)
-
-        return lr_img, hr_img
+        return convert_img(lr_img, 'pil', '[0, 1]'), convert_img(hr_img, 'pil', '[-1, 1]')
