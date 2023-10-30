@@ -7,11 +7,16 @@ from torch.utils.data import Dataset
 
 
 class Div2kDataset(Dataset):
-    """Custom pytorch inherted dataset for loading images from source folder"""
+    """ Custom pytorch dataset for loading images from source folder
+    
+    Args:
+    data_dir -- directory containing images (default: ./DIV2K)
+    transformer -- transformer class for image formatting before image return 
+    """
 
-    def __init__(self, data_dir="./DIV2K", transform=None):
+    def __init__(self, data_dir="./DIV2K", transformer=None):
         self.data_dir = data_dir
-        self.transform = transform
+        self.transformer = transformer
 
         self.images = sorted(os.listdir(self.data_dir))
 
@@ -21,7 +26,7 @@ class Div2kDataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(f"{self.data_dir}/{self.images[idx]}")
 
-        if self.transform:
-            return self.transform(img)
+        if self.transformer:
+            return self.transformer(img)
 
         return img

@@ -13,7 +13,11 @@ DATA, TRAIN, VALID = "DIV2K", "DIV2K_train_HR", "DIV2K_valid_HR"
 
 
 class Downloader:
-    """Downloader class used for downloading data from given url"""
+    """ Downloader class used for downloading data from given url
+    
+    Args:
+    unit -- data download unit (default: KB)
+    """
 
     units = {"KB": 1024, "MB": 1024**2, "GB": 1024**3}
 
@@ -24,6 +28,12 @@ class Downloader:
         self.chunk_size = self.units[unit]
 
     def __call__(self, url, filename):
+        """ Download data from given url 
+        
+        Args:
+        url -- web url containing data
+        filename -- downloaded data name
+        """
         try:
             req = requests.get(url, stream=True, timeout=20)
         except Exception as exc:

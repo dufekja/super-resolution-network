@@ -1,11 +1,17 @@
-""" NN modules file with model components """
+""" Neural network building blocks with sresnet model """
 
 from math import log2
 from torch import nn
 
 
 class SubPixelBlock(nn.Module):
-    """Subpixel conv block used for img upscaling using combined channels"""
+    """ Subpixel conv block used for img upscaling using combined channels
+    
+    Args:
+    n_channels -- number of input channels
+    k -- kernel size
+    scale -- block scaling factor (default: 2)
+    """
 
     def __init__(self, n_channels, k, scale=4):
         super().__init__()
@@ -21,7 +27,15 @@ class SubPixelBlock(nn.Module):
 
 
 class ConvBlock(nn.Module):
-    """Constant dimension conv block with optional normalization and activation function"""
+    """ Constant dimension conv block with optional normalization and activation function
+    
+    Args:
+    in_channels -- number of input channels
+    out_channels -- number of output channels
+    k -- kernel size
+    norm -- True / False param controlling batch normalization (default: False)
+    activation -- convblock output activation function (default: None)
+    """
 
     ACTIVATIONS = {
         None: None,
@@ -51,7 +65,13 @@ class ConvBlock(nn.Module):
 
 
 class ResidualConvBlock(nn.Module):
-    """Residual conv block with 2 conv layers and residual connection"""
+    """ Residual conv block with 2 conv layers and residual connection
+    
+    Args:
+    n_channels -- input and output channels
+    k -- kernel size
+    norm -- True / False param controlling batch normalization (default: False)
+    """
 
     def __init__(self, n_channels, k, norm=False):
         super().__init__()
@@ -67,37 +87,35 @@ class ResidualConvBlock(nn.Module):
 
 
 class SResNet(nn.Module):
-    """Super resolution upscaling model"""
+    """ Super resolution upscaling model
+    
+    Args:
+    in_channels -- number of input channels (default: 3)
+    out_channels -- number of output channels (default: 3)
+    n_channels -- number of inner convolution blocks channels (default: 64)
+    small_kernel -- small kernel size used in residual blocks and subpixel blocks (default: 3)
+    large_kernel -- large kernel size used in normal convolution blocks (default: 9)
+    res_block_cnt -- number of chained residual blocks (default: 10)
+    scale -- model scale factor (default: 2)
+    norm -- True / False param controlling batch normalization (default: False)
+    """
 
-    def __init__(
-        self,
-        in_channels=3,
-        out_channels=3,
-        n_channels=64,
-        small_kernel=3,
-        large_kernel=9,
-        res_block_cnt=10,
-        scale=2,
-        norm=False,
+    def __init__(self, in_channels=3, out_channels=3, n_channels=64, 
+                 small_kernel=3, large_kernel=9, res_block_cnt=10, 
+                 scale=2, norm=False
     ):
         super().__init__()
 
         self.conv1 = ConvBlock(in_channels, n_channels, large_kernel, norm, "prelu")
 
         self.res_blocks = nn.Sequential(
-            *[
-                ResidualConvBlock(n_channels, small_kernel, norm)
-                for _ in range(res_block_cnt)
-            ]
+            *[ResidualConvBlock(n_channels, small_kernel, norm) for _ in range(res_block_cnt)]
         )
 
         self.conv2 = ConvBlock(n_channels, n_channels, large_kernel, norm)
 
         self.subpix_blocks = nn.Sequential(
-            *[
-                SubPixelBlock(n_channels, small_kernel, scale=2)
-                for _ in range(int(log2(scale)))
-            ]
+            *[SubPixelBlock(n_channels, small_kernel, scale=2) for _ in range(int(log2(scale)))]
         )
 
         self.conv3 = ConvBlock(n_channels, out_channels, large_kernel, norm, "tanh")

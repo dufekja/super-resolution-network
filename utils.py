@@ -19,7 +19,15 @@ OUTPUT_CONVERSIONS = {
     '[-1, 1]': lambda img: img * 2 - 1
 }
 
+
 def convert_img(img, input_format, output_format):
+    """ Convert given image from source format onto target format
+
+    Args:
+    img -- image to convert
+    input_format -- source image format ('pil', '[0, 255]', '[0, 1]', '[-1, 1]')
+    output_format -- target image format ('pil', '[0, 255]', '[0, 1]', '[-1, 1]')
+    """
     assert input_format in INPUT_CONVERSIONS
     assert output_format in OUTPUT_CONVERSIONS
 
@@ -27,7 +35,15 @@ def convert_img(img, input_format, output_format):
 
 
 class ImgTransformer:
-    """Img transformer utility class for cropping and scaling images"""
+    """ Img transformer utility class for cropping and scaling images
+    
+    Args:
+    lr_output -- low resolution image output format
+    hr_output -- high resolution image output format
+    crop -- training image crop size (default: 64)
+    scale -- low resolution image scale (default: 2)
+    is_train -- choose if images should be for training or validation (default: True)
+    """
 
     def __init__(self, lr_output, hr_output, crop=64, scale=2, is_train=True):
         self.crop = crop
@@ -39,6 +55,11 @@ class ImgTransformer:
         assert crop % scale == 0
 
     def __call__(self, img):
+        """ Transform given image and return pair of low resultion image and original image
+
+        Args:
+        img -- source image to transform 
+        """
         if self.is_train:
             # crop random cut from given image based on specified scrop dimensions
             assert self.crop <= min(img.size)
@@ -61,4 +82,4 @@ class ImgTransformer:
         assert (hr_img.width % self.scale, hr_img.height % self.scale) == (0, 0)
 
         # return lres and hres images in specified output type
-        return convert_img(lr_img, 'pil', '[0, 1]'), convert_img(hr_img, 'pil', '[-1, 1]')
+        return convert_img(lr_img, 'pil', self.lr_output), convert_img(hr_img, 'pil', self.hr_output)

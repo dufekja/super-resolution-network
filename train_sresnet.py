@@ -1,4 +1,4 @@
-""" Sresnet train sript """
+""" Sresnet train script with model and training params configuration """
 
 import os
 import torch
@@ -15,16 +15,16 @@ from models import SResNet
 SEED = 42
 
 # model params
-SCALE = 2
+SCALE = 4
 LARGE_KERNEL = 9
 SMALL_KERNEL = 3
 N_CHANNELS = 64
-N_RES_BLOCKS = 10
+N_RES_BLOCKS = 16
 NORM = False
 
 # training params
-TRAIN_EPOCHS = 5
-BATCH_SIZE = 16
+TRAIN_EPOCHS = 10
+BATCH_SIZE = 32
 CROP_SIZE = 64
 DATA_DIR = "./DIV2K"
 LR = 1e-4
@@ -39,6 +39,13 @@ CHECKPOINT = PT_SAVED if os.path.exists(PT_SAVED) else None
 
 
 def train_epoch(loader, model, optimizer):
+    """ Train one epoch of given model
+    
+    Args:
+    loader -- data loader class
+    model -- model to train with training data
+    optimizer -- model optimizer class
+    """
     train_cum_loss = 0.
 
     for lr, hr in tqdm(loader, total=len(loader)):
@@ -63,6 +70,12 @@ def train_epoch(loader, model, optimizer):
 
 
 def validate_epoch(loader, model):
+    """ Run one epoch and calculate validation loss
+
+    Args:
+    loader -- data loader class with validation data
+    model -- model class used for validation
+    """
     valid_cum_loss = 0.
 
     for lr, hr in tqdm(loader, total=len(loader)):
@@ -75,7 +88,7 @@ def validate_epoch(loader, model):
             valid_cum_loss += loss.item() * lr.shape[0]
 
             del lr, hr, sr
-        
+
     return valid_cum_loss / len(loader)
 
 
@@ -84,7 +97,7 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(SEED)
 
     # setup data loaders
-    dataset = Div2kDataset(data_dir=DATA_DIR, transform=ImgTransformer("[0, 1]", "[-1, 1]", crop=CROP_SIZE, scale=SCALE))
+    dataset = Div2kDataset(data_dir=DATA_DIR, transformer=ImgTransformer("[0, 1]", "[-1, 1]", crop=CROP_SIZE, scale=SCALE))
     train_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
     valid_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
@@ -98,8 +111,8 @@ if __name__ == "__main__":
     if CHECKPOINT:
         state = torch.load(CHECKPOINT)
         sresnet, sresnet_optimizer, model_epoch, tloss, vloss = (
-            state["model"], 
-            state["optimizer"], 
+            state["model"],
+            state["optimizer"],
             state["epoch"],
             state["tloss"],
             state["vloss"]
