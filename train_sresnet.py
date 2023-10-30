@@ -1,6 +1,7 @@
+""" Sresnet train sript """
 
-import torch
 import os
+import torch
 
 from tqdm import tqdm
 from torch import nn
@@ -22,73 +23,114 @@ N_RES_BLOCKS = 10
 NORM = False
 
 # training params
-TRAIN_EPOCHS = 1
-BATCH_SIZE = 4
+TRAIN_EPOCHS = 5
+BATCH_SIZE = 16
 CROP_SIZE = 64
-DATA_DIR = './DIV2K'
+DATA_DIR = "./DIV2K"
 LR = 1e-4
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-PT_SAVED = 'sresnet.pt'
+MSE_LOSS_CRITERION = nn.MSELoss().to(DEVICE)
+
+# training checkpoint params
+PT_SAVED = "sresnet.pt"
 CHECKPOINT = PT_SAVED if os.path.exists(PT_SAVED) else None
 
-def train_epoch(loader, model, criterion, optimizer):
+
+def train_epoch(loader, model, optimizer):
     train_cum_loss = 0.
-    
-    for [lr, hr] in tqdm(loader, total=len(loader)):
+
+    for lr, hr in tqdm(loader, total=len(loader)):
         lr, hr = lr.to(DEVICE), hr.to(DEVICE)
 
         # zero grad and forward batch trough model
         optimizer.zero_grad()
         sr = model(lr)
-        
-        # calculate and backprop loss 
-        loss = criterion(sr, hr)
+
+        # calculate and backprop loss
+        loss = MSE_LOSS_CRITERION(sr, hr)
         loss.backward()
 
         # adjust optimizer weights
         optimizer.step()
 
         train_cum_loss += loss.item() * lr.shape[0]
-        
+
         del lr, hr, sr
-        
-        # tmp return after one batch
+
     return train_cum_loss / len(loader)
 
-if __name__ == '__main__':
-    
-    torch.manual_seed(SEED) 
+
+def validate_epoch(loader, model):
+    valid_cum_loss = 0.
+
+    for lr, hr in tqdm(loader, total=len(loader)):
+        lr, hr = lr.to(DEVICE), hr.to(DEVICE)
+
+        with torch.no_grad():
+            sr = model(lr)
+            loss = MSE_LOSS_CRITERION(sr, hr)
+
+            valid_cum_loss += loss.item() * lr.shape[0]
+
+            del lr, hr, sr
+        
+    return valid_cum_loss / len(loader)
+
+
+if __name__ == "__main__":
+    torch.manual_seed(SEED)
     torch.cuda.manual_seed(SEED)
 
-    # setup train dataloader
-    dataset = Div2kDataset(data_dir=DATA_DIR, transform=ImgTransformer('[0, 1]', '[-1, 1]', crop=CROP_SIZE, scale=SCALE))
+    # setup data loaders
+    dataset = Div2kDataset(data_dir=DATA_DIR, transform=ImgTransformer("[0, 1]", "[-1, 1]", crop=CROP_SIZE, scale=SCALE))
     train_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
-    
-    
-    # init model and optimizer values
-    if not CHECKPOINT:
-        model = SResNet(3, 3, N_CHANNELS, SMALL_KERNEL, LARGE_KERNEL, N_RES_BLOCKS, SCALE, NORM)
-        optimizer = Adam(model.parameters(), lr=LR)
-        model_epoch = 0
-    else:
-        checkpoint = torch.load(CHECKPOINT)
-        model, optimizer, model_epoch = checkpoint['model'], checkpoint['optimizer'], checkpoint['epoch']
-        print(f'[EPOCH {model_epoch}] loaded checkpoint')
+    valid_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
+    # init new model and optimizer
+    sresnet = SResNet(3, 3, N_CHANNELS, SMALL_KERNEL, LARGE_KERNEL, N_RES_BLOCKS, SCALE, NORM).to(DEVICE)
+    sresnet_optimizer = Adam(sresnet.parameters(), lr=LR)
+    model_epoch = 0
+    tloss, vloss = [], []
 
-    model = model.to(DEVICE)
-    criterion = nn.MSELoss().to(DEVICE)
+    # load model and optimizer saved state if exists
+    if CHECKPOINT:
+        state = torch.load(CHECKPOINT)
+        sresnet, sresnet_optimizer, model_epoch, tloss, vloss = (
+            state["model"], 
+            state["optimizer"], 
+            state["epoch"],
+            state["tloss"],
+            state["vloss"]
+        )
+        print(f"[EPOCH {model_epoch}] loaded checkpoint")
 
     # train model for desired number of train epochs
     for epoch in range(TRAIN_EPOCHS):
 
-        model.train(True)
-        avg_loss = train_epoch(train_loader, model, criterion, optimizer)
-        model.train(False)
+        # run train epoch
+        print(f"[EPOCH {model_epoch}] training epoch")
+        sresnet.train(True)
+        avg_train_loss = train_epoch(train_loader, sresnet, sresnet_optimizer)
+        sresnet.train(False)
 
-        print(f'[EPOCH {model_epoch}] avg loss: {avg_loss:.4f}')
+        # run validation epoch without model learning
+        print(f"[EPOCH {model_epoch}] validating epoch")
+        avg_valid_loss = validate_epoch(valid_loader, sresnet)
 
+        print(f"[EPOCH {model_epoch}] train loss: {avg_train_loss:.4f}")
+        print(f"[EPOCH {model_epoch}] valid loss: {avg_valid_loss:.4f}")
+
+        tloss.append(avg_train_loss)
+        vloss.append(avg_valid_loss)
+
+        # save model and training status
         model_epoch += 1
-        torch.save({'model' : model, 'optimizer' : optimizer, 'epoch' : model_epoch}, PT_SAVED)
+        torch.save({
+            "model": sresnet, 
+            "optimizer": sresnet_optimizer, 
+            "epoch": model_epoch,
+            "tloss": tloss,
+            "vloss": vloss
+        }, PT_SAVED)
