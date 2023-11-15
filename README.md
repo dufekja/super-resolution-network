@@ -1,7 +1,7 @@
 
 <!-- main header -->
 <div align="center">
-    Super Resolution Network
+    <h1>Super Resolution Network</h1>
 </div>
 
 <!-- contents -->
@@ -26,6 +26,12 @@ Aim of this project is to create and train custom SRESNN for image upscaling.
     - [] getting started
     - [] usage
     - [] implementation
+        - [] download script
+        - [] dataset class
+        - [] utils
+        - [x] residual block
+        - [x] subpixel block
+        - [] sresnet
 - [x] custom dataset loader
 - [] utils
     - [x] image format converter function
@@ -65,10 +71,50 @@ todo
 ### Subpixel blocks
 todo
 
+### Utils
+todo
+
+### Residual convolution blocks
+
+#### Explanation
+
+Deeper neural networks are challenging to train due to the increased number of layers and issues such as vanishing/exploding gradients. This is where residual blocks with residual learning come into play.
+
+In a standard layer, there is an input $x$ and our layer $F(x)$. Typically, we aim to find the function to obtain $y$. Finding this function is equivalent to determining weights and biases for the vector $x$. This is the basic operation of a standard layer.
+
+Now, let's consider the residual layer. This time, our desired output is $F(x) + x$. (we simply add the input vector to our layer output). What this truly implies is that our function doesn't learn a direct mapping from $x$ to $y$, but rather it learns what to subtract or add from the given input vector.
+
+According to the `Deep Residual Learning` paper, it is easier to find this residual mapping compared to finding a normal input transformation. Consequently, deeper networks can be trained more effectively.
+
+![residual layer](images/residual-layer.png)
+
+#### Code
+
+Residual convolution blocks are implemented as class inherited from `nn.Module`. It consists of two convolutional layers with `prelu` as activation function for the first one.
+
+Output of this layer is exaclty $F(x) + x$.
+
+### Subpixel blocks
+
+#### Explanation
+
+Suppose we aim to design a layer capable of upscaling a given vector by a scale $s$. To achieve this upscaling, precisely $s^2$ channels are required, which can later be consolidated into a single channel to enhance the image resolution (as illustrated in the image).
+
+Our subpixel block is composed of a convolution block that generates $s^2$ output channels. Subsequently, these channels are passed through a pixel shuffle operation.
+
+![subpixel block](images/subpixel-block.png)
+
+#### Code
+
+Subpixel block is implemented as class inherited from `nn.Module`. It utilizes `nn.Conv2d` block -> `nn.PixelShuffle` -> `nn.PReLU`. 
+
 ### Transfer learning
 todo
 
 ### GAN
+todo
+
+## Evaluation
 todo
 
 ## License
@@ -85,6 +131,7 @@ Distributed under the MIT license. Visit `LICENSE` for more information.
 - [GAN in super resolution](https://jonathan-hui.medium.com/gan-super-resolution-gan-srgan-b471da7270ec)
 
 ### Science papers
+- [Deep residual learning](https://arxiv.org/pdf/1512.03385.pdf)
 - [SRESNN](https://arxiv.org/pdf/1501.00092.pdf)
 - [Image quality assessment using SSIM](https://ece.uwaterloo.ca/~z70wang/publications/ssim.pdf)
 - [Loss functions in SRESNN](https://arxiv.org/pdf/1511.08861.pdf)
