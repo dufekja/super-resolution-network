@@ -38,16 +38,16 @@ The goal of this project is to develop and train a custom `Super Resolution Neur
     - [] custom url dataset selection
 - [] readme
     - [x] getting started
-    - [] usage
+    - [x] usage
     - [] implementation
         - [x] download script
-        - [] dataset class
-        - [] utils
+        - [x] dataset class
+        - [x] utils
         - [x] residual block
         - [x] subpixel block
         - [] sresnet
 - [x] custom dataset loader
-- [] utils
+- [x] utils
     - [x] image format converter function
     - [x] image training and validation transformer
 - [x] SRESNN
@@ -116,7 +116,18 @@ deactivate
 In this section is explanation how to use pretrained models for upscaling your own images and how to train sresnet on custom data with custom configuration.
 
 ### Upscaling
-todo
+
+Example usage of image upscaling can be found in `superres.ipynb`. But standard way is to load trained model file.
+
+```
+model = torch.load('sresnet.pt')['model'].to(DEVICE)
+```
+
+Then pass image in right format ([0, 1]) into model and convrt output back to pil image format:
+```
+output = model(image)
+sr = convert_img(output.detach().squeeze(0), '[-1, 1]', 'pil')
+```
 
 ### Training your own model
 
@@ -154,10 +165,27 @@ Download script is implemented as an easy way how to download DIV2K image data a
 It consists of script part, which downloads training and validation data unzips them and moves them into DIV2K folder. The second part is `Downloader` class which shows download progress on its usage. 
 
 ### Dataset class
-todo
+
+Class inherted from pytorch `Dataset` for custom data loading from custom folder. Takes optional `ImgTransformer` class param for image conversion for sresnet.
 
 ### Utils
-todo
+
+Module `utils.py` contains functions and classes for image format manipulation.
+Main class `ImgTransformer` is used for transforming images in data loader. It has two mods `train`/`validation`
+
+#### ImgTransformer
+
+Takes image as input and returns cropped high res image and its low res variation. Based on its mode, it returns maximal scale divisible crop or crop with size defined in training script config file.
+
+Low res image is created using downscaling high res image using `Image.BICUBIC`.
+
+#### convert_image
+
+Convert image function supports 4 converisons.
+- pil (default RGB pil image format)
+- [0, 255] (RGB image tensor)
+- [0, 1] (scaled tensor)
+- [-1, 1] (scaled tensor for tanh activation func)
 
 ### Residual convolution block
 
