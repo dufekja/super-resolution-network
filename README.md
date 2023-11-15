@@ -23,10 +23,10 @@ Aim of this project is to create and train custom SRESNN for image upscaling.
     - [] DIV2K single use download
     - [] custom url dataset selection
 - [] readme
-    - [] getting started
+    - [x] getting started
     - [] usage
     - [] implementation
-        - [] download script
+        - [x] download script
         - [] dataset class
         - [] utils
         - [x] residual block
@@ -53,22 +53,93 @@ In this section is complete guide with environment and prerequisities setup.
 
 ### Prerequisities
 
-todo
+#### Ubuntu
+ 
+`python3` is needed for running project code and training or using sresnet model.
+
+Install python and pip using:
+```
+sudo apt update
+sudo apt install python3
+sudo apt install python3-pip
+```
+
+Test your installation by running:
+```
+python3 --version
+pip3 --version
+```
+
+Last prerequisite is to have installed `venv` python package.
+
+```
+python3 -m pip install venv
+```
 
 ### Installation
 
-todo
+Now we need to create our python venv and install all packages from requirements.txt.
+
+Create venv with custom name and activate it:
+```
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Now just install all packages from requirements.txt:
+```
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+To deactivate virtual environment run:
+```
+deactivate
+```
 
 ## Usage
 
+In this section is explanation how to use pretrained models for upscaling your own images and how to train sresnet on custom data with custom configuration.
+
+### Upscaling
 todo
+
+### Training your own model
+
+#### Data
+
+First step is to download data. You can use any high resolution image data or use download script for DIV2K images.
+
+Run this with activated venv to download DIV2K image data:
+```
+python3 download.py
+```
+
+#### Training
+
+For training is used `train_sresnet.py` script. So before running this script, you need to specify some important parameters.
+
+- SCALE -> set your own preferred upscale factor
+- TRAIN_EPOCHS -> number of epochs
+- DATA_DIR -> folder with image data
+- PT_SAVED -> trained model file
+
+Feel free to tweak other parameters as well and then just run:
+```
+python3 train_sresnet.py
+```
+
+This will train super resolution model for specified number of epochs and then it saves its parameters into `PT_SAVED` file (default is sresnet.pt).
 
 ## Implementation details
 
-### Residual convolution blocks
-todo
+### Download script
 
-### Subpixel blocks
+Download script is implemented as an easy way how to download DIV2K image data and parse it into format which can be used by network data loaders.
+
+It consists of script part, which downloads training and validation data unzips them and moves them into DIV2K folder. The second part is `Downloader` class which shows download progress on its usage. 
+
+### Dataset class
 todo
 
 ### Utils
@@ -106,7 +177,7 @@ Our subpixel block is composed of a convolution block that generates $s^2$ outpu
 
 #### Code
 
-Subpixel block is implemented as class inherited from `nn.Module`. It utilizes `nn.Conv2d` block -> `nn.PixelShuffle` -> `nn.PReLU`. 
+Subpixel block is implemented as class inherited from `nn.Module`. It utilizes `nn.Conv2d` -> `nn.PixelShuffle` -> `nn.PReLU`. 
 
 ### Transfer learning
 todo
