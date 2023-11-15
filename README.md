@@ -7,15 +7,29 @@
 <!-- contents -->
 <details>
     <summary>Table of Contents</summary>
+    <ul>
     <li><a href="#about-the-project">About the project</a></li>
+    <li><a href="#getting-started">Getting started</a></li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#implementation-details">Implementation</a>
+        <ul>
+            <li><a href="#download-script">Download</a></li>
+            <li><a href="#dataset-class">Dataset</a></li>
+            <li><a href="#utils">Utils</a></li>
+            <li><a href="#residual-convolution-block">Residual convolution block</a></li>
+            <li><a href="#subpixel-block">Subpixel block</a></li>
+            <li><a href="#sresnet">Sresnet</a></li>
+        </ul>
+    </li>
+    <li><a href="#evaluation">Evaluation</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#refereces">References</a></li>
+    </ul>
 </details>
 
 ## About The Project
 
-Aim of this project is to create and train custom SRESNN for image upscaling.
+The goal of this project is to develop and train a custom `Super Resolution Neural Network` for image upscaling. The project encompasses various stages, including downloading image data, constructing neural network building blocks, model training, and performance evaluation.
 
 ## Roadmap
 
@@ -145,7 +159,7 @@ todo
 ### Utils
 todo
 
-### Residual convolution blocks
+### Residual convolution block
 
 #### Explanation
 
@@ -165,7 +179,7 @@ Residual convolution blocks are implemented as class inherited from `nn.Module`.
 
 Output of this layer is exaclty $F(x) + x$.
 
-### Subpixel blocks
+### Subpixel block
 
 #### Explanation
 
@@ -178,6 +192,9 @@ Our subpixel block is composed of a convolution block that generates $s^2$ outpu
 #### Code
 
 Subpixel block is implemented as class inherited from `nn.Module`. It utilizes `nn.Conv2d` -> `nn.PixelShuffle` -> `nn.PReLU`. 
+
+### SResNet
+todo
 
 ### Transfer learning
 todo
