@@ -19,6 +19,25 @@ OUTPUT_CONVERSIONS = {
     '[-1, 1]': lambda img: img * 2 - 1
 }
 
+def upscale_img(img, model, input_format = 'pil', output_format = 'pil'):
+    """ Upscale given low res imaage using given model
+
+    Args:
+    img -- low resolution image to upscale
+    model -- trained superres model
+    input_format -- source image format ('pil', '[0, 255]', '[0, 1]', '[-1, 1]')
+    output_format -- target image format ('pil', '[0, 255]', '[0, 1]', '[-1, 1]')
+    """
+
+    assert input_format in INPUT_CONVERSIONS
+    assert output_format in OUTPUT_CONVERSIONS
+    assert sum(img.size) <= 1300
+
+    sr_tanh = model(convert_img(img.convert('RGB'), input_format, '[0, 1]'))
+    sr = convert_img(sr_tanh.detach().squeeze(0), '[-1, 1]', output_format)
+
+    return sr
+
 
 def convert_img(img, input_format, output_format):
     """ Convert given image from source format onto target format
@@ -28,6 +47,7 @@ def convert_img(img, input_format, output_format):
     input_format -- source image format ('pil', '[0, 255]', '[0, 1]', '[-1, 1]')
     output_format -- target image format ('pil', '[0, 255]', '[0, 1]', '[-1, 1]')
     """
+
     assert input_format in INPUT_CONVERSIONS
     assert output_format in OUTPUT_CONVERSIONS
 
@@ -60,6 +80,7 @@ class ImgTransformer:
         Args:
         img -- source image to transform 
         """
+        
         if self.is_train:
             # crop random cut from given image based on specified scrop dimensions
             assert self.crop <= min(img.size)

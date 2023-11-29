@@ -119,15 +119,20 @@ In this section is explanation how to use pretrained models for upscaling your o
 
 Example usage of image upscaling can be found in `superres.ipynb`. But standard way is to load trained model file.
 
+Trained models are saved in a form of dictionary with `model`, `optimizer`, `epoch`, `tloss`, `vloss` keys.
+
 ```
-model = torch.load('sresnet.pt')['model'].to(DEVICE)
+state = torch.load('sresnet.pt')
+model = state['model'].to(DEVICE)
 ```
 
-Then pass image in right format ([0, 1]) into model and convrt output back to pil image format:
+Your low resolution image (default PIL format) can be then upscaled using `upscale_img` utility function:
+
 ```
-output = model(image)
-sr = convert_img(output.detach().squeeze(0), '[-1, 1]', 'pil')
+sr = upscale_img(image, model)
 ```
+
+Low resolution image size cannot be bigger than 1300 in sum because of the sresnet computational limitation. For example (900, 500) is too big.
 
 ### Training your own model
 
@@ -243,7 +248,7 @@ Distributed under the MIT license. Visit `LICENSE` for more information.
 - [DIV2K image dataset](https://data.vision.ee.ethz.ch/cvl/DIV2K/)
 
 ### Tutorials
-- [Super resolution tutorial](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Super-Resolution#overview)
+- [Super resolution tutorial](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Super-Resolution)
 - [GAN in super resolution](https://jonathan-hui.medium.com/gan-super-resolution-gan-srgan-b471da7270ec)
 
 ### Science papers
