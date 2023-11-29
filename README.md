@@ -227,10 +227,15 @@ Our subpixel block is composed of a convolution block that generates $s^2$ outpu
 Subpixel block is implemented as class inherited from `nn.Module`. It utilizes `nn.Conv2d` -> `nn.PixelShuffle` -> `nn.PReLU`. 
 
 ### SResNet
-todo
+
+SResNet model consists of 3 main convolutional layers, residual blocks and subpixel blocks.
+Because of this structure, it can learn important bonds between low resolution and high resolution images.
+
+This model is explained more in [this](https://arxiv.org/pdf/1501.00092.pdf) science paper.
 
 ### Transfer learning
-todo
+
+Transfer learning involves reusing a pre-trained model that is then further trained for a specific purpose. In this instance, our primary model is `sresnet`, which aims to minimize `Mean Squared Error (MSE) loss`. The weights of this trained model can be utilized and fine-tuned, for instance, through the use of `Generative Adversarial Networks` (GANs). This approach significantly reduces the time required for training a new super-resolution model from scratch.
 
 ### GAN
 todo

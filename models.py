@@ -3,6 +3,8 @@
 from math import log2
 from torch import nn
 
+import torch
+
 
 class SubPixelBlock(nn.Module):
     """ Subpixel conv block used for img upscaling using combined channels
@@ -135,4 +137,24 @@ class SResNet(nn.Module):
         # conv3 with tanh activation
         x = self.conv3(x)
 
+        return x
+
+class Generator(SResNet):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        skip, x = x, self.res_blocks(x)
+        x = self.conv2(x) + skip
+        x = self.subpix_blocks(x)
+        x = self.conv3(x)
+        return x
+
+    
+class Discriminator(nn.Module):
+    def __init__(self):
+        super.__init__()
+
+    def forward(x):
         return x
