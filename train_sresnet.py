@@ -15,17 +15,19 @@ from models import SResNet
 SEED = 42
 
 # model params
-SCALE = 4
+SCALE = 2
 LARGE_KERNEL = 9
 SMALL_KERNEL = 3
 N_CHANNELS = 64
 N_RES_BLOCKS = 16
+
 NORM = False
+VALIDATE = True
 
 # training params
-TRAIN_EPOCHS = 10
-BATCH_SIZE = 32
-CROP_SIZE = 64
+TRAIN_EPOCHS = 5 
+BATCH_SIZE = 16
+CROP_SIZE = 96
 DATA_DIR = "./DIV2K"
 LR = 1e-4
 
@@ -34,7 +36,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MSE_LOSS_CRITERION = nn.MSELoss().to(DEVICE)
 
 # training checkpoint params
-PT_SAVED = "sresnet.pt"
+PT_SAVED = "2x-sresnet.pt"
 CHECKPOINT = PT_SAVED if os.path.exists(PT_SAVED) else None
 
 
@@ -102,7 +104,7 @@ if __name__ == "__main__":
     valid_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     # init new model and optimizer
-    sresnet = SResNet(3, 3, N_CHANNELS, SMALL_KERNEL, LARGE_KERNEL, N_RES_BLOCKS, SCALE, NORM).to(DEVICE)
+    sresnet = SResNet(3, 3, N_CHANNELS, SMALL_KERNEL, LARGE_KERNEL, N_RES_BLOCKS, SCALE, NORM)
     sresnet_optimizer = Adam(sresnet.parameters(), lr=LR)
     model_epoch = 0
     tloss, vloss = [], []
@@ -119,6 +121,8 @@ if __name__ == "__main__":
         )
         print(f"[EPOCH {model_epoch}] loaded checkpoint")
 
+    sresnet = sresnet.to(DEVICE)
+
     # train model for desired number of train epochs
     for epoch in range(TRAIN_EPOCHS):
 
@@ -128,15 +132,18 @@ if __name__ == "__main__":
         avg_train_loss = train_epoch(train_loader, sresnet, sresnet_optimizer)
         sresnet.train(False)
 
-        # run validation epoch without model learning
-        print(f"[EPOCH {model_epoch}] validating epoch")
-        avg_valid_loss = validate_epoch(valid_loader, sresnet)
-
         print(f"[EPOCH {model_epoch}] train loss: {avg_train_loss:.4f}")
-        print(f"[EPOCH {model_epoch}] valid loss: {avg_valid_loss:.4f}")
-
         tloss.append(avg_train_loss)
-        vloss.append(avg_valid_loss)
+
+        if VALIDATE:
+            # run validation epoch without model learning
+            print(f"[EPOCH {model_epoch}] validating epoch")
+            avg_valid_loss = validate_epoch(valid_loader, sresnet)
+
+            print(f"[EPOCH {model_epoch}] valid loss: {avg_valid_loss:.4f}")
+            vloss.append(avg_valid_loss)
+        else:
+            vloss.append(1000.)
 
         # save model and training status
         model_epoch += 1
