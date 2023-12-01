@@ -41,18 +41,21 @@ class ConvBlock(nn.Module):
 
     ACTIVATIONS = {
         None: None,
+        "relu" : nn.ReLU(),
         "prelu": nn.PReLU(),
+        "lrelu": nn.LeakyReLU(),
         "sigmoid": nn.Sigmoid(),
         "tanh": nn.Tanh(),
     }
 
-    def __init__(self, in_channels, out_channels, k, norm=False, activation=None):
+    def __init__(self, in_channels, out_channels, k, stride=1, norm=False, activation=None):
         super().__init__()
 
         assert activation in self.ACTIVATIONS
 
         # main conv block
-        layers = [nn.Conv2d(in_channels, out_channels, k, padding=k // 2)]
+
+        layers = [nn.Conv2d(in_channels, out_channels, k, stride=stride, padding=k // 2)]
 
         # optional conv layers
         if norm:
@@ -75,12 +78,12 @@ class ResidualConvBlock(nn.Module):
     norm -- True / False param controlling batch normalization (default: False)
     """
 
-    def __init__(self, n_channels, k, norm=False):
+    def __init__(self, n_channels, k, stride=1, norm=False):
         super().__init__()
 
         self.conv_blocks = nn.Sequential(
-            ConvBlock(n_channels, n_channels, k, norm, "prelu"),
-            ConvBlock(n_channels, n_channels, k, norm, None),
+            ConvBlock(n_channels, n_channels, k, stride, norm, 'prelu'),
+            ConvBlock(n_channels, n_channels, k, stride, norm, None),
         )
 
     def forward(self, x):
@@ -108,19 +111,19 @@ class SResNet(nn.Module):
     ):
         super().__init__()
 
-        self.conv1 = ConvBlock(in_channels, n_channels, large_kernel, norm, "prelu")
+        self.conv1 = ConvBlock(in_channels, n_channels, large_kernel, 1, norm, 'prelu')
 
         self.res_blocks = nn.Sequential(
-            *[ResidualConvBlock(n_channels, small_kernel, norm) for _ in range(res_block_cnt)]
+            *[ResidualConvBlock(n_channels, small_kernel, 1, norm) for _ in range(res_block_cnt)]
         )
 
-        self.conv2 = ConvBlock(n_channels, n_channels, large_kernel, norm)
+        self.conv2 = ConvBlock(n_channels, n_channels, large_kernel, 1, norm)
 
         self.subpix_blocks = nn.Sequential(
             *[SubPixelBlock(n_channels, small_kernel, scale=2) for _ in range(int(log2(scale)))]
         )
 
-        self.conv3 = ConvBlock(n_channels, out_channels, large_kernel, norm, "tanh")
+        self.conv3 = ConvBlock(n_channels, out_channels, large_kernel, 1, norm, 'tanh')
 
     def forward(self, x):
         # conv1
@@ -140,21 +143,49 @@ class SResNet(nn.Module):
         return x
 
 class Generator(SResNet):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x):
-        x = self.conv1(x)
-        skip, x = x, self.res_blocks(x)
-        x = self.conv2(x) + skip
-        x = self.subpix_blocks(x)
-        x = self.conv3(x)
-        return x
+    def __init__(self, in_channels=3, out_channels=3, n_channels=64, 
+                 small_kernel=3, large_kernel=9, res_block_cnt=10, 
+                 scale=2, norm=False
+    ):
+        super().__init__(in_channels=in_channels, out_channels=out_channels, n_channels=n_channels, 
+                 small_kernel=small_kernel, large_kernel=large_kernel, res_block_cnt=res_block_cnt, 
+                 scale=scale, norm=norm)
 
     
 class Discriminator(nn.Module):
-    def __init__(self):
-        super.__init__()
+    def __init__(self, in_channels=3, norm=False):
+        super().__init__()
 
-    def forward(x):
-        return x
+        self.conv = nn.Sequential(*[
+            ConvBlock(in_channels, 64, 3, stride=1, norm=False, activation='lrelu'),
+
+            ConvBlock(64, 64, 3, stride=2, norm=norm, activation='lrelu'),
+
+            ConvBlock(64, 128, 3, stride=1, norm=norm, activation='lrelu'),
+            ConvBlock(128, 128, 3, stride=2, norm=norm, activation='lrelu'),
+
+            ConvBlock(128, 256, 3, stride=1, norm=norm, activation='lrelu'),
+            ConvBlock(256, 256, 3, stride=2, norm=norm, activation='lrelu'),
+
+            ConvBlock(256, 512, 3, stride=1, norm=norm, activation='lrelu'),
+            ConvBlock(512, 512, 3, stride=2, norm=norm, activation='lrelu'),
+
+            # this should enable different image sizes
+            nn.AdaptiveAvgPool2d((6, 6))
+        ])
+
+        self.dense = nn.Sequential(*[
+            nn.Linear(36 * 512, 1024),
+            nn.PReLU(),
+
+            nn.Linear(1024, 1)
+        ])
+
+    def forward(self, x):
+        batch_size = x.size(0)
+
+        # run trough convolutional layers
+        x = self.conv(x)
+
+        # run flattened vector trough dense layers
+        return self.dense(x.view(batch_size, -1))
