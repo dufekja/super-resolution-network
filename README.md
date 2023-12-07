@@ -9,6 +9,7 @@
     <summary>Table of Contents</summary>
     <ul>
     <li><a href="#about-the-project">About the project</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#getting-started">Getting started</a></li>
     <li><a href="#usage">Usage</a></li>
     <li><a href="#implementation-details">Implementation</a>
@@ -29,23 +30,32 @@
 
 ## About The Project
 
-The goal of this project is to develop and train a custom `Super Resolution Neural Network` for image upscaling. The project encompasses various stages, including downloading image data, constructing neural network building blocks, model training, and performance evaluation.
+This project aims to create and train a specialized `Super Resolution Neural Network` designed for image upscaling. The process involves several stages, such as downloading image data, building the essential components of the neural network, conducting model training, and evaluating performance.
 
 ## Roadmap
 
-- [] download script
-    - [] DIV2K single use download
-    - [] custom url dataset selection
-- [] readme
+The project primarily involves the following key tasks:
+- DIV2K download script
+- README
+- utility functions
+- models
+- evaluation
+
+<details>
+    <summary>Detailed roadmap</summary>
+
+- [x] download script
+    - [x] DIV2K single use download
+- [x] readme
     - [x] getting started
     - [x] usage
-    - [] implementation
+    - [x] implementation
         - [x] download script
         - [x] dataset class
         - [x] utils
         - [x] residual block
         - [x] subpixel block
-        - [] sresnet
+        - [x] sresnet
 - [x] custom dataset loader
 - [x] utils
     - [x] image format converter function
@@ -54,22 +64,22 @@ The goal of this project is to develop and train a custom `Super Resolution Neur
     - [x] training script
     - [x] residual convolution blocks
     - [x] subpixel blocks
-- [] GAN
-    - transfer learning
-    - generator model
-    - discriminator model
-- [] evaluation
-
+- [ ] evaluation
+- [ ] GAN
+    - [ ] transfer learning
+    - [ ] generator model
+    - [ ] discriminator model
+</details>
 
 ## Getting Started
 
-In this section is complete guide with environment and prerequisities setup.
+This section provides a comprehensive guide for setting up the environment and prerequisites.
 
 ### Prerequisities
 
 #### Ubuntu
  
-`python3` is needed for running project code and training or using sresnet model.
+To run the project code and train or use the sresnet model, you need to install `python3` and `pip`. Use the following commands:
 
 Install python and pip using:
 ```
@@ -78,119 +88,112 @@ sudo apt install python3
 sudo apt install python3-pip
 ```
 
-Test your installation by running:
+Verify your installation:
 ```
 python3 --version
 pip3 --version
 ```
 
-Last prerequisite is to have installed `venv` python package.
-
+The last prerequisite is to have the `venv` Python package installed:
 ```
 python3 -m pip install venv
 ```
 
 ### Installation
 
-Now we need to create our python venv and install all packages from requirements.txt.
+Now, let's create a Python virtual environment (venv) and install all packages from `requirements.txt`.
 
-Create venv with custom name and activate it:
+Create and activate the venv:
 ```
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-Now just install all packages from requirements.txt:
+Install the required packages:
 ```
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-To deactivate virtual environment run:
+To deactivate virtual environment, run:
 ```
 deactivate
 ```
 
 ## Usage
 
-In this section is explanation how to use pretrained models for upscaling your own images and how to train sresnet on custom data with custom configuration.
+This section explains how to use pretrained models for upscaling your own images and how to train sresnet on custom data with a custom configuration.
 
 ### Upscaling
 
-Example usage of image upscaling can be found in `superres.ipynb`. But standard way is to load trained model file.
-
-Trained models are saved in a form of dictionary with `model`, `optimizer`, `epoch`, `tloss`, `vloss` keys.
-
+You can find an example of image upscaling in superres.ipynb. Alternatively, you can load a trained model file using the following code:
 ```
 state = torch.load('sresnet.pt')
 model = state['model'].to(DEVICE)
 ```
 
-Your low resolution image (default PIL format) can be then upscaled using `upscale_img` utility function:
+Upscale your low-resolution image (default PIL format) using the `upscale_img` utility function:
 
 ```
 sr = upscale_img(image, model)
 ```
+Note: The low-resolution image size cannot exceed 1300 in sum due to computational limitations.
 
-Low resolution image size cannot be bigger than 1300 in sum because of the sresnet computational limitation. For example (900, 500) is too big.
 
 ### Training your own model
 
 #### Data
 
-First step is to download data. You can use any high resolution image data or use download script for DIV2K images.
-
-Run this with activated venv to download DIV2K image data:
+Start by downloading data. You can use any high-resolution image data or use the download script for DIV2K images. Run the following command with the virtual environment activated:
 ```
 python3 download.py
 ```
 
 #### Training
 
-For training is used `train_sresnet.py` script. So before running this script, you need to specify some important parameters.
+Use the `train_sresnet.py` script for training. Before running the script, specify important parameters:
 
-- SCALE -> set your own preferred upscale factor
-- TRAIN_EPOCHS -> number of epochs
-- DATA_DIR -> folder with image data
-- PT_SAVED -> trained model file
+- `SCALE`: Set your preferred upscale factor.
+- `TRAIN_EPOCHS`: Number of epochs.
+- `DATA_DIR`: Folder with image data.
+- `PT_SAVED`: Trained model file (default is sresnet.pt).
 
-Feel free to tweak other parameters as well and then just run:
+Feel free to tweak other parameters, then run:
 ```
 python3 train_sresnet.py
 ```
 
-This will train super resolution model for specified number of epochs and then it saves its parameters into `PT_SAVED` file (default is sresnet.pt).
+This trains the super resolution model for the specified number of epochs and saves its parameters into the `PT_SAVED` file.
 
 ## Implementation details
 
 ### Download script
 
-Download script is implemented as an easy way how to download DIV2K image data and parse it into format which can be used by network data loaders.
+The download script serves as a user-friendly tool for effortlessly obtaining `DIV2K` image data and transforming it into a format compatible with network data loaders.
 
-It consists of script part, which downloads training and validation data unzips them and moves them into DIV2K folder. The second part is `Downloader` class which shows download progress on its usage. 
+The script is divided into two key components. Firstly, there's the script itself, which handles the downloading, unzipping, and organization of both training and validation data into the DIV2K folder. The second component is the `Downloader` class, designed to display download progress during its usage.
 
 ### Dataset class
 
-Class inherted from pytorch `Dataset` for custom data loading from custom folder. Takes optional `ImgTransformer` class param for image conversion for sresnet.
+This class is inherited from PyTorch's Dataset and is designed for custom data loading from a specified folder. It includes an optional parameter, `ImgTransformer`, which is a class for image conversion specifically created for use with the sresnet model.
 
 ### Utils
 
-Module `utils.py` contains functions and classes for image format manipulation.
-Main class `ImgTransformer` is used for transforming images in data loader. It has two mods `train`/`validation`
+"The `utils.py` module houses functions and classes dedicated to manipulating image formats. The primary class within this module is `ImgTransformer`, which plays a key role in transforming images within the data loader. It offers two modes: train and validation."
 
 #### ImgTransformer
 
-Takes image as input and returns cropped high res image and its low res variation. Based on its mode, it returns maximal scale divisible crop or crop with size defined in training script config file.
+This function takes an image as input and provides both a cropped high-resolution image and its low-resolution counterpart. The mode of operation determines whether it returns a crop with the maximum scale divisible size or a crop with a size specified in the training script's configuration file.
 
-Low res image is created using downscaling high res image using `Image.BICUBIC`.
+The low-resolution image is generated by downscaling the high-resolution image using the `BICUBIC` method.
 
 #### convert_image
 
 Convert image function supports 4 converisons.
-- pil (default RGB pil image format)
-- [0, 255] (RGB image tensor)
-- [0, 1] (scaled tensor)
-- [-1, 1] (scaled tensor for tanh activation func)
+- `pil`: Default RGB pil image format.
+- `[0, 255]`: RGB image tensor.
+- `[0, 1]`: Scaled tensor.
+- `[-1, 1]`: Scaled tensor suitable for the tanh activation function.
 
 ### Residual convolution block
 
@@ -202,7 +205,7 @@ In a standard layer, there is an input $x$ and our layer $F(x)$. Typically, we a
 
 Now, let's consider the residual layer. This time, our desired output is $F(x) + x$. (we simply add the input vector to our layer output). What this truly implies is that our function doesn't learn a direct mapping from $x$ to $y$, but rather it learns what to subtract or add from the given input vector.
 
-According to the `Deep Residual Learning` paper, it is easier to find this residual mapping compared to finding a normal input transformation. Consequently, deeper networks can be trained more effectively.
+According to the `Deep Residual Learning` paper, it is easier to find this residual mapping compared to finding a direct input transformation. Consequently, deeper networks can be trained more effectively.
 
 ![residual layer](images/residual-layer.png)
 
@@ -218,7 +221,7 @@ Output of this layer is exaclty $F(x) + x$.
 
 Suppose we aim to design a layer capable of upscaling a given vector by a scale $s$. To achieve this upscaling, precisely $s^2$ channels are required, which can later be consolidated into a single channel to enhance the image resolution (as illustrated in the image).
 
-Our subpixel block is composed of a convolution block that generates $s^2$ output channels. Subsequently, these channels are passed through a pixel shuffle operation.
+Our subpixel block is composed of a convolution block that generates $s^2$ output channels. Subsequently, these channels are passed through a pixel shuffle operation, which rearranges them to enhance image resolution..
 
 ![subpixel block](images/subpixel-block.png)
 
@@ -228,8 +231,7 @@ Subpixel block is implemented as class inherited from `nn.Module`. It utilizes `
 
 ### SResNet
 
-SResNet model consists of 3 main convolutional layers, residual blocks and subpixel blocks.
-Because of this structure, it can learn important bonds between low resolution and high resolution images.
+The SResNet model consists of three main convolutional layers, residual blocks and subpixel blocks. Due to this structure, it can learn important relationships between low-resolution and high-resolution images.
 
 This model is explained more in [this](https://arxiv.org/pdf/1501.00092.pdf) science paper.
 
