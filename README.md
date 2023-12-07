@@ -254,7 +254,8 @@ Distributed under the MIT license. Visit `LICENSE` for more information.
 ### Data
 - [DIV2K image dataset](https://data.vision.ee.ethz.ch/cvl/DIV2K/)
 
-### Tutorials
+### Tutorials and documentation
+- [Pytorch documentation](https://pytorch.org/docs/stable/index.html)
 - [Super resolution tutorial](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Super-Resolution)
 - [GAN in super resolution](https://jonathan-hui.medium.com/gan-super-resolution-gan-srgan-b471da7270ec)
 

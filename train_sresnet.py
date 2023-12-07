@@ -36,7 +36,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 MSE_LOSS_CRITERION = nn.MSELoss().to(DEVICE)
 
 # training checkpoint params
-PT_SAVED = "2x-sresnet.pt"
+PT_SAVED = "sresnet.pt"
 CHECKPOINT = PT_SAVED if os.path.exists(PT_SAVED) else None
 
 
