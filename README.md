@@ -64,7 +64,7 @@ The project primarily involves the following key tasks:
     - [x] training script
     - [x] residual convolution blocks
     - [x] subpixel blocks
-- [ ] evaluation
+- [x] evaluation
 - [ ] GAN
     - [ ] transfer learning
     - [ ] generator model
@@ -139,6 +139,11 @@ sr = upscale_img(image, model)
 ```
 Note: The low-resolution image size cannot exceed 1300 in sum due to computational limitations.
 
+Example of upscaled image using `2x-sresnet.pt`
+![panda images](images/panda2x.png)
+
+Example of upscaled image using `4x-sresnet.pt`
+![panda images](images/panda4x.png)
 
 ### Training your own model
 
@@ -243,7 +248,44 @@ Transfer learning involves reusing a pre-trained model that is then further trai
 todo
 
 ## Evaluation
-todo
+
+The models were assessed based on both the loss function value and image metrics.
+
+Two primary metrics used for evaluation were the `Structural Similarity Index` (SSIM) and `Peak Signal-to-Noise Ratio` (PSNR). SSIM measures the similarity between two images, while PSNR quantifies the quality of an image by comparing it to a reference image.
+
+### 2x-sresnet
+
+The 2x-sresnet model underwent training without validation until epoch 25. Subsequently, validation was performed at each epoch, following this procedure for expedited training.
+
+The plot illustrates consistent improvement with each epoch, prompting speculation about potential enhancements with a larger dataset.
+
+![2x-sresnet loss](images/2x-loss.png)
+
+The evaluation metrics based on 100 random crops, measuring SSIM and PSNR, yielded the following results:
+
+- Average SSIM (bicubic): `0.8840`
+- Average SSIM (superres): `0.8885`
+- Average PSNR (bicubic): `30.8672`
+- Average PSNR (superres): `29.9488`
+
+The results don't necessarily imply that the sresnet is superior to the standard bicubic upscaling algorithm. Instead, they provide a valuable comparison, showcasing the capability of learning a similarly performing model for upscaling. Further analysis and consideration of factors such as computational efficiency, training time, and model interpretability are essential for a comprehensive assessment of the model's practical utility in different scenarios.
+
+### 4x-sresnet
+
+The 4x-sresnet model underwent 80 epochs of training with validation enabled. Similar to the 2x-sresnet, significant improvement occurred in the initial epochs, followed by a more consistent trend.
+
+![4x-sresnet loss](images/4x-loss.png)
+
+The evaluation metrics for SSIM and PSNR are as follows:
+
+- Average SSIM (bicubic): `0.7438`
+- Average SSIM (superres): `0.7423`
+- Average PSNR (bicubic): `26.4051`
+- Average PSNR (superres): `24.6701`
+
+The observed difficulty in learning 4x upscaling compared to 2x upscaling is noteworthy. While the potential for improvement with a larger dataset or the integration of a Generative Adversarial Network (GAN) is acknowledged, the current evaluation, based on a limited set of 100 tested crops, indicates that bicubic upscaling outperforms the super-resolution model.
+
+This insight underscores the complexity of addressing higher upscaling factors and emphasizes the need for further experimentation and optimization to enhance the performance of the 4x-sresnet model. It also suggests that the choice of upscaling factor may significantly impact the model's learning and generalization capabilities.
 
 ## License
 
