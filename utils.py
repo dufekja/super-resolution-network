@@ -1,9 +1,13 @@
 """ Superres model related utilities """
 
 import random
-
+import numpy as np
 import torchvision.transforms.functional as FT
+
 from PIL import Image
+from skimage import metrics
+
+from dataset import Div2kDataset
 
 INPUT_CONVERSIONS = {
     'pil' : FT.to_tensor,
@@ -31,9 +35,11 @@ def upscale_img(img, model, input_format = 'pil', output_format = 'pil'):
 
     assert input_format in INPUT_CONVERSIONS
     assert output_format in OUTPUT_CONVERSIONS
+
+    img = convert_img(img, input_format, 'pil')
     assert sum(img.size) <= 1300
 
-    sr_tanh = model(convert_img(img.convert('RGB'), input_format, '[0, 1]'))
+    sr_tanh = model(convert_img(img, input_format, '[0, 1]'))
     sr = convert_img(sr_tanh.detach().squeeze(0), '[-1, 1]', output_format)
 
     return sr
@@ -52,6 +58,43 @@ def convert_img(img, input_format, output_format):
     assert output_format in OUTPUT_CONVERSIONS
 
     return OUTPUT_CONVERSIONS[output_format](INPUT_CONVERSIONS[input_format](img))
+
+def evaluate(N, model, scale, crop=512):
+    """ Return upscaled metrics dictionaries
+
+    Args:
+    N -- number of random image iterations
+    model -- superres model
+    scale -- upscaling factor
+    crop -- image crop size (default: 512)
+    """
+
+    ssim, psnr = { 'bic': [], 'sres' : [] }, { 'bic': [], 'sres' : []}
+    dataset = Div2kDataset(transformer=ImgTransformer(lr_output='pil', hr_output='pil', crop=crop, scale=scale))
+
+    for _ in range(N):
+        
+        # get random image crop
+        lr, hr = dataset[random.randint(0, len(dataset) - 1)]
+        
+        # upscale low-resolution image
+        sr = upscale_img(lr, model)
+
+        # convert into np arrays
+        orig, bic, sres = (
+            np.array(convert_img(hr, 'pil', '[0, 1]')),
+            np.array(convert_img(lr.resize(hr.size, Image.BICUBIC), 'pil', '[0, 1]')),
+            np.array(convert_img(sr, 'pil', '[0, 1]'))
+        )
+
+        # calculate metrics
+        ssim['bic'].append(metrics.structural_similarity(orig, bic, channel_axis=0, data_range=1.))
+        ssim['sres'].append(metrics.structural_similarity(orig, sres, channel_axis=0, data_range=1.))
+
+        psnr['bic'].append(metrics.peak_signal_noise_ratio(orig, bic))
+        psnr['sres'].append(metrics.peak_signal_noise_ratio(orig, sres))
+
+    return ssim, psnr
 
 
 class ImgTransformer:
